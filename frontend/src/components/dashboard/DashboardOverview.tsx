@@ -11,6 +11,8 @@ import {
   Info,
 } from 'lucide-react';
 import { ActiveTab, CareerMatchResult, StudentProfile } from '../../types';
+import { StorageService } from '../../utils/storage';
+import { generatePersonalizedRoadmap } from '../../utils/roadmapEngine';
 
 interface DashboardOverviewProps {
   profile: StudentProfile;
@@ -25,6 +27,19 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 }) => {
   const topMatch = careerMatches[0];
   const primaryCareer = topMatch?.career;
+
+  const roadmapStatuses = topMatch
+    ? StorageService.getRoadmapProgress(profile.email, topMatch.career.id)
+    : {};
+  const roadmapItems = topMatch
+    ? generatePersonalizedRoadmap(profile, topMatch, roadmapStatuses)
+    : [];
+  const activeMilestone =
+    roadmapItems.find((i) => i.status === 'In Progress') ||
+    roadmapItems.find((i) => i.status === 'Not Started');
+  const secondMilestone = roadmapItems.filter(
+    (i) => i.id !== activeMilestone?.id && i.status !== 'Completed'
+  )[0];
 
   return (
     <div className="space-y-6">
@@ -153,13 +168,21 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 To reach 90%+ readiness for <strong>{primaryCareer.title}</strong>, focus on closing the highest-impact gaps:
               </p>
               <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1.5">
-                <div className="flex items-center gap-2 text-indigo-300 font-medium">
-                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                  <span>Milestone 1: {topMatch.missingSkills[0] || 'Advanced Architecture'}</span>
+                <div className="flex items-center gap-2 text-indigo-300 font-medium truncate">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                  <span className="truncate">
+                    {activeMilestone
+                      ? `${activeMilestone.title} (${activeMilestone.status})`
+                      : `Milestone 1: ${topMatch.missingSkills[0] || 'Core Alignment'}`}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 text-slate-400">
-                  <div className="w-1.5 h-1.5 rounded-full bg-slate-600" />
-                  <span>Milestone 2: {topMatch.missingSkills[1] || 'Containerization & CI'}</span>
+                <div className="flex items-center gap-2 text-slate-400 truncate">
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-600 shrink-0" />
+                  <span className="truncate">
+                    {secondMilestone
+                      ? `Next: ${secondMilestone.title}`
+                      : `Milestone 2: ${topMatch.missingSkills[1] || 'Portfolio Capstone'}`}
+                  </span>
                 </div>
               </div>
             </div>

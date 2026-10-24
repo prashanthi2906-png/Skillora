@@ -191,6 +191,7 @@ export const App: React.FC = () => {
             <LearningRoadmapView
               profile={currentProfile}
               topMatch={topMatch}
+              careerMatches={careerMatches}
             />
           )}
 

@@ -1,10 +1,11 @@
-import { StudentProfile } from '../types';
+import { RoadmapItemStatus, StudentProfile } from '../types';
 import { DEMO_STUDENT_PROFILE } from '../constants/demoData';
 
 const STORAGE_KEYS = {
   CURRENT_USER: 'skillora_current_user',
   CURRENT_PROFILE: 'skillora_student_profile',
   REGISTERED_PROFILES: 'skillora_registered_profiles',
+  ROADMAP_PROGRESS: 'skillora_roadmap_progress',
 };
 
 export interface AuthSession {
@@ -119,5 +120,51 @@ export const StorageService = {
   findRegisteredProfile(email: string): StudentProfile | null {
     const list = this.getRegisteredProfiles();
     return list.find((p) => p.email.toLowerCase() === email.toLowerCase()) || null;
+  },
+
+  getRoadmapProgress(email: string, careerId: string): Record<string, RoadmapItemStatus> {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.ROADMAP_PROGRESS);
+      if (!data) return {};
+      const parsed = JSON.parse(data);
+      const userProgress = parsed[email.toLowerCase()] || {};
+      return userProgress[careerId] || {};
+    } catch {
+      return {};
+    }
+  },
+
+  getAllRoadmapProgressForUser(email: string): Record<string, Record<string, RoadmapItemStatus>> {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.ROADMAP_PROGRESS);
+      if (!data) return {};
+      const parsed = JSON.parse(data);
+      return parsed[email.toLowerCase()] || {};
+    } catch {
+      return {};
+    }
+  },
+
+  saveRoadmapItemStatus(
+    email: string,
+    careerId: string,
+    itemId: string,
+    status: RoadmapItemStatus
+  ): void {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.ROADMAP_PROGRESS);
+      const parsed = raw ? JSON.parse(raw) : {};
+      const normalizedEmail = email.toLowerCase();
+      if (!parsed[normalizedEmail]) {
+        parsed[normalizedEmail] = {};
+      }
+      if (!parsed[normalizedEmail][careerId]) {
+        parsed[normalizedEmail][careerId] = {};
+      }
+      parsed[normalizedEmail][careerId][itemId] = status;
+      localStorage.setItem(STORAGE_KEYS.ROADMAP_PROGRESS, JSON.stringify(parsed));
+    } catch (e) {
+      console.warn('Unable to persist roadmap progress to localStorage', e);
+    }
   },
 };
