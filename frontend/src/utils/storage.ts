@@ -43,13 +43,32 @@ export const StorageService = {
   getCurrentProfile(): StudentProfile | null {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CURRENT_PROFILE);
+      let profile: StudentProfile | null = null;
       if (data) {
-        return JSON.parse(data);
+        profile = JSON.parse(data);
+      } else {
+        // If user is demo user, default to demo profile
+        const session = this.getAuthSession();
+        if (session && session.isDemoUser) {
+          profile = DEMO_STUDENT_PROFILE;
+        }
       }
-      // If user is demo user, default to demo profile
-      const session = this.getAuthSession();
-      if (session && session.isDemoUser) {
-        return DEMO_STUDENT_PROFILE;
+
+      if (profile) {
+        // Sanitize arrays to prevent null pointer exceptions if storage was malformed
+        return {
+          ...profile,
+          personalDetails: {
+            fullName: profile.personalDetails?.fullName || '',
+            college: profile.personalDetails?.college || '',
+            degree: profile.personalDetails?.degree || '',
+            yearOfStudy: profile.personalDetails?.yearOfStudy || '',
+          },
+          languages: Array.isArray(profile.languages) ? profile.languages : [],
+          technicalSkills: Array.isArray(profile.technicalSkills) ? profile.technicalSkills : [],
+          softSkills: Array.isArray(profile.softSkills) ? profile.softSkills : [],
+          careerInterests: Array.isArray(profile.careerInterests) ? profile.careerInterests : [],
+        };
       }
       return null;
     } catch {
@@ -57,16 +76,31 @@ export const StorageService = {
     }
   },
 
-  saveCurrentProfile(profile: StudentProfile): void {
+  saveCurrentProfile(profile: StudentProfile, previousEmail?: string): void {
     try {
       localStorage.setItem(STORAGE_KEYS.CURRENT_PROFILE, JSON.stringify(profile));
 
       // Also persist to registered profiles list if not demo user
       if (!profile.isDemoUser) {
         const registered = this.getRegisteredProfiles();
-        const updated = registered.filter((p) => p.email.toLowerCase() !== profile.email.toLowerCase());
+        const emailsToRemove = [profile.email.toLowerCase()];
+        if (previousEmail) {
+          emailsToRemove.push(previousEmail.toLowerCase());
+        }
+        const updated = registered.filter(
+          (p) => !emailsToRemove.includes(p.email.toLowerCase())
+        );
         updated.push(profile);
         localStorage.setItem(STORAGE_KEYS.REGISTERED_PROFILES, JSON.stringify(updated));
+
+        // Update active auth session if email changed
+        const session = this.getAuthSession();
+        if (session && previousEmail && session.email.toLowerCase() === previousEmail.toLowerCase()) {
+          this.setAuthSession({
+            ...session,
+            email: profile.email,
+          });
+        }
       }
     } catch (e) {
       console.warn('Unable to save profile to localStorage', e);
