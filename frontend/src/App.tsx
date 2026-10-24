@@ -1,48 +1,198 @@
-import React from 'react';
-import { Sparkles, Terminal, BookOpen, Layers } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LoginPage } from './components/auth/LoginPage';
+import { RegisterPage } from './components/auth/RegisterPage';
+import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
+import { Sidebar } from './components/dashboard/Sidebar';
+import { Header } from './components/dashboard/Header';
+import { DashboardOverview } from './components/dashboard/DashboardOverview';
+import { MyProfileView } from './components/dashboard/MyProfileView';
+import { SkillGapView } from './components/dashboard/SkillGapView';
+import { LearningRoadmapView } from './components/dashboard/LearningRoadmapView';
+import { ProgressView } from './components/dashboard/ProgressView';
+import { DEMO_STUDENT_PROFILE } from './constants/demoData';
+import { calculateCareerMatches } from './utils/matchingEngine';
+import { AuthSession, StorageService } from './utils/storage';
+import { ActiveTab, CareerMatchResult, StudentProfile } from './types';
+
+type ViewMode = 'login' | 'register' | 'onboarding' | 'dashboard';
 
 export const App: React.FC = () => {
+  const [viewMode, setViewMode] = useState<ViewMode>('login');
+  const [currentEmail, setCurrentEmail] = useState<string>('');
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+
+  // Load session from storage on initial mount
+  useEffect(() => {
+    const session = StorageService.getAuthSession();
+    if (session) {
+      setCurrentEmail(session.email);
+      if (session.onboardingCompleted) {
+        const loadedProfile = StorageService.getCurrentProfile();
+        if (loadedProfile) {
+          setProfile(loadedProfile);
+          setViewMode('dashboard');
+        } else if (session.isDemoUser) {
+          setProfile(DEMO_STUDENT_PROFILE);
+          setViewMode('dashboard');
+        } else {
+          setViewMode('onboarding');
+        }
+      } else {
+        setViewMode('onboarding');
+      }
+    } else {
+      setViewMode('login');
+    }
+  }, []);
+
+  const handleLoginSuccess = (
+    email: string,
+    isDemoUser: boolean,
+    onboardingCompleted: boolean
+  ) => {
+    setCurrentEmail(email);
+
+    const session: AuthSession = {
+      email,
+      isDemoUser,
+      onboardingCompleted,
+    };
+    StorageService.setAuthSession(session);
+
+    if (isDemoUser) {
+      setProfile(DEMO_STUDENT_PROFILE);
+      StorageService.saveCurrentProfile(DEMO_STUDENT_PROFILE);
+      setViewMode('dashboard');
+    } else if (onboardingCompleted) {
+      const existing = StorageService.findRegisteredProfile(email);
+      if (existing) {
+        setProfile(existing);
+        StorageService.saveCurrentProfile(existing);
+        setViewMode('dashboard');
+      } else {
+        setViewMode('onboarding');
+      }
+    } else {
+      setViewMode('onboarding');
+    }
+  };
+
+  const handleRegisterSuccess = (email: string) => {
+    setCurrentEmail(email);
+    const session: AuthSession = {
+      email,
+      isDemoUser: false,
+      onboardingCompleted: false,
+    };
+    StorageService.setAuthSession(session);
+    setViewMode('onboarding');
+  };
+
+  const handleOnboardingComplete = (completedProfile: StudentProfile) => {
+    setProfile(completedProfile);
+    StorageService.saveCurrentProfile(completedProfile);
+
+    const session: AuthSession = {
+      email: completedProfile.email,
+      isDemoUser: false,
+      onboardingCompleted: true,
+    };
+    StorageService.setAuthSession(session);
+    setViewMode('dashboard');
+  };
+
+  const handleLogout = () => {
+    StorageService.clearAuthSession();
+    setProfile(null);
+    setCurrentEmail('');
+    setActiveTab('dashboard');
+    setViewMode('login');
+  };
+
+  // If in auth flows:
+  if (viewMode === 'login') {
+    return (
+      <LoginPage
+        onLoginSuccess={handleLoginSuccess}
+        onNavigateToRegister={() => setViewMode('register')}
+      />
+    );
+  }
+
+  if (viewMode === 'register') {
+    return (
+      <RegisterPage
+        onRegisterSuccess={handleRegisterSuccess}
+        onNavigateToLogin={() => setViewMode('login')}
+      />
+    );
+  }
+
+  if (viewMode === 'onboarding') {
+    return (
+      <OnboardingFlow
+        email={currentEmail}
+        onComplete={handleOnboardingComplete}
+        onCancel={handleLogout}
+      />
+    );
+  }
+
+  // Dashboard flow
+  const currentProfile = profile || DEMO_STUDENT_PROFILE;
+  const careerMatches: CareerMatchResult[] = calculateCareerMatches(currentProfile);
+  const topMatch = careerMatches[0];
+
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white">
-      <div className="max-w-2xl w-full bg-slate-800/80 backdrop-blur-md border border-slate-700 rounded-2xl p-8 shadow-2xl space-y-6">
-        <header className="flex items-center space-x-3">
-          <div className="p-3 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-500/30">
-            <Sparkles className="w-8 h-8" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">Skillora</h1>
-            <p className="text-sm text-slate-400">Collaborative Skill Development Platform</p>
-          </div>
-        </header>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row">
+      <Sidebar
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        profile={currentProfile}
+        onLogout={handleLogout}
+      />
 
-        <section className="p-4 bg-slate-900/60 rounded-xl border border-slate-700/60 space-y-3">
-          <h2 className="text-sm font-semibold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
-            <Terminal className="w-4 h-4" /> Environment Status
-          </h2>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="p-3 rounded-lg bg-slate-800 border border-slate-700/50">
-              <span className="text-slate-400 block text-xs">Frontend</span>
-              <span className="font-medium text-emerald-400">React + Vite + TS + Tailwind</span>
-            </div>
-            <div className="p-3 rounded-lg bg-slate-800 border border-slate-700/50">
-              <span className="text-slate-400 block text-xs">Branch</span>
-              <span className="font-mono text-xs text-amber-400">feature/project-setup</span>
-            </div>
-          </div>
-        </section>
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <Header activeTab={activeTab} profile={currentProfile} />
 
-        <footer className="pt-2 border-t border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
-          <span className="flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5" /> Ready for team feature development
-          </span>
-          <span className="flex items-center gap-1.5">
-            <BookOpen className="w-3.5 h-3.5" /> Skillora Starter
-          </span>
-        </footer>
+        <main className="p-4 sm:p-6 lg:p-8 flex-1">
+          {activeTab === 'dashboard' && (
+            <DashboardOverview
+              profile={currentProfile}
+              careerMatches={careerMatches}
+              onNavigateTab={setActiveTab}
+            />
+          )}
+
+          {activeTab === 'profile' && (
+            <MyProfileView profile={currentProfile} />
+          )}
+
+          {activeTab === 'skill-gap' && (
+            <SkillGapView
+              careerMatches={careerMatches}
+              profile={currentProfile}
+            />
+          )}
+
+          {activeTab === 'roadmap' && (
+            <LearningRoadmapView
+              profile={currentProfile}
+              topMatch={topMatch}
+            />
+          )}
+
+          {activeTab === 'progress' && (
+            <ProgressView
+              profile={currentProfile}
+              topMatch={topMatch}
+            />
+          )}
+        </main>
       </div>
-    </main>
+    </div>
   );
 };
 
 export default App;
-
