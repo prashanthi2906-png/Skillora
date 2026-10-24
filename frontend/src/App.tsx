@@ -110,6 +110,14 @@ export const App: React.FC = () => {
     setViewMode('login');
   };
 
+  const handleUpdateProfile = (updatedProfile: StudentProfile, previousEmail?: string) => {
+    setProfile(updatedProfile);
+    StorageService.saveCurrentProfile(updatedProfile, previousEmail);
+    if (previousEmail && previousEmail.toLowerCase() !== updatedProfile.email.toLowerCase()) {
+      setCurrentEmail(updatedProfile.email);
+    }
+  };
+
   // If in auth flows:
   if (viewMode === 'login') {
     return (
@@ -166,7 +174,10 @@ export const App: React.FC = () => {
           )}
 
           {activeTab === 'profile' && (
-            <MyProfileView profile={currentProfile} />
+            <MyProfileView
+              profile={currentProfile}
+              onUpdateProfile={handleUpdateProfile}
+            />
           )}
 
           {activeTab === 'skill-gap' && (

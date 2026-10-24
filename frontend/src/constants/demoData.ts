@@ -53,6 +53,21 @@ export const AVAILABLE_SOFT_SKILLS: string[] = [
   'Mentorship',
 ];
 
+export const CAREER_INTEREST_SUGGESTIONS: string[] = [
+  'Frontend Developer',
+  'Backend Developer',
+  'Full-Stack Developer',
+  'Data Analyst',
+  'Data Scientist',
+  'AI/ML Engineer',
+  'Cybersecurity Analyst',
+  'Cloud Engineer',
+  'Cloud & DevOps Engineer',
+  'Backend Engineer',
+  'Frontend Specialist',
+  'Data Platform Engineer',
+];
+
 export const CAREER_REQUIREMENTS: CareerRequirement[] = [
   {
     id: 'full-stack-dev',
