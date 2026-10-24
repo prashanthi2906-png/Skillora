@@ -75,3 +75,4 @@ To maintain code quality and stability across the team, we follow a feature-bran
 - **Java Development Kit (JDK)** (version 17 or 21 LTS)
 - **PostgreSQL** (version 15+)
 - **Git**
+
