@@ -51,6 +51,33 @@ export interface StudentProfile {
 
 export type ActiveTab = 'dashboard' | 'profile' | 'skill-gap' | 'roadmap' | 'progress';
 
+export type RoadmapItemStatus = 'Not Started' | 'In Progress' | 'Completed';
+export type RoadmapPriority = 'High' | 'Medium' | 'Low';
+export type RoadmapStage = 'Foundations' | 'Core Skills' | 'Practical Projects' | 'Career Preparation';
+
+export interface LearningResource {
+  title: string;
+  url?: string;
+  type: 'Documentation' | 'Guide' | 'Tutorial' | 'Search';
+  searchQuery?: string;
+}
+
+export interface RoadmapItem {
+  id: string;
+  skill: string;
+  title: string;
+  stage: RoadmapStage;
+  category?: 'Foundation' | 'Core' | 'Advanced' | 'Project';
+  description: string;
+  whyItMatters: string;
+  priority: RoadmapPriority;
+  estimatedDuration: string;
+  estimatedWeeks?: number;
+  skillsCovered: string[];
+  status: RoadmapItemStatus;
+  resources: LearningResource[];
+}
+
 export interface RoadmapStep {
   id: string;
   title: string;
